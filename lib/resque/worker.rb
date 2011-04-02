@@ -23,6 +23,18 @@ module Resque
     # Strategy for choosing intervals
     attr_accessor :interval_strategy
 
+    # Lists the queues that this Worker is assigned to (can be further filtered later by
+    # #queue_filter).
+    # Should have #list(queues_array) method that receives the list of queues
+    # mentioned during the worker start and return another array with the actual
+    # queue names. Useful for converting names like 'group_*' into the real queue names.
+    attr_accessor :queue_lister
+    
+    # Filter of queues that need to be polled at this instant.
+    # Should have #filter(queues_array) method that receives the list of all
+    # queues monitored and return the list of queues to check.
+    attr_accessor :queue_filter
+    
     attr_writer :to_s
 
     # Returns an array of all worker objects.
@@ -206,12 +218,12 @@ module Resque
     # A splat ("*") means you want every queue (in alpha order) - this
     # can be useful for dynamically adding new queues.
     def assigned_queues
-      @queues[0] == "*" ? Resque.queues.sort : @queues
+      queue_lister ? queue_lister.list(@queues) : (@queues[0] == "*" ? Resque.queues.sort : @queues)
     end
 
     # Post-filtering list of queues assigned to this worker.
     def queues
-      assigned_queues
+      queue_filter ? queue_filter.filter(assigned_queues) : assigned_queues
     end
     
     # Not every platform supports fork. Here we do our magic to

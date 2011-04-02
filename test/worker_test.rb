@@ -331,16 +331,14 @@ context "Resque::Worker" do
   end
 
   context 'sleep interval' do
-    setup do
-      @worker = Resque::Worker.new(:jobs)
-    end
+    setup { @worker = Resque::Worker.new(:jobs) }
 
     test 'when interval_strategy is undefined' do
       assert_equal 6, @worker.sleep_interval(6)
     end
 
     test 'when interval_strategy is defined' do
-      @worker.interval_strategy = class CustomStrategy
+      class CustomIntervalStrategy
         @queues = @default_interval = nil
         def self.queues; @queues; end
         def self.default_interval; @default_interval; end
@@ -350,10 +348,57 @@ context "Resque::Worker" do
           return 7
         end
       end
+      @worker.interval_strategy = CustomIntervalStrategy
       
       assert_equal 7, @worker.sleep_interval(6)
-      assert_equal 6, CustomStrategy.default_interval
-      assert_equal [ 'jobs' ], CustomStrategy.queues
+      assert_equal 6, CustomIntervalStrategy.default_interval
+      assert_equal [ 'jobs' ], CustomIntervalStrategy.queues
     end 
+  end
+  
+  context 'assigned queues' do
+    setup { @worker = Resque::Worker.new('j*', 'q') }
+
+    test 'when queue_lister is not set' do
+      assert_equal [ 'j*', 'q' ], @worker.assigned_queues
+    end
+    
+    test 'when queue_lister is set' do
+      class CustomQueueLister
+        @queue_names = nil
+        def self.queue_names; @queue_names; end
+        def self.list(queue_names)
+          @queue_names = queue_names
+          return [ 'j1', 'j2', 'q' ]
+        end
+      end
+      @worker.queue_lister = CustomQueueLister
+      
+      assert_equal [ 'j1', 'j2', 'q'], @worker.assigned_queues
+      assert_equal [ 'j*', 'q' ], CustomQueueLister.queue_names
+    end
+  end
+  
+  context 'filtered queues' do
+    setup { @worker = Resque::Worker.new('j*', 'q') }
+
+    test 'when queue_filter is not set' do
+      assert_equal [ 'j*', 'q' ], @worker.queues
+    end
+    
+    test 'when queue_filter is set' do
+      class CustomQueueFilter
+        @queue_names = nil
+        def self.queue_names; @queue_names; end
+        def self.filter(queue_names)
+          @queue_names = queue_names
+          return [ 'j1', 'j2', 'q' ]
+        end
+      end
+      @worker.queue_filter = CustomQueueFilter
+      
+      assert_equal [ 'j1', 'j2', 'q'], @worker.queues
+      assert_equal [ 'j*', 'q' ], CustomQueueFilter.queue_names
+    end
   end
 end
