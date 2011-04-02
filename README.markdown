@@ -50,6 +50,34 @@ In This Fork
         worker.interval_strategry = DynamicIntervalStrategy
         w.work(5) # Default setting
 
+* Custom queue lister that you can add to parse the names of queues in
+  any format you like and return the actual queues at run-time. For example,
+  you could define queues, like this "group_*" and have the lister convert the
+  wildcard to the actual names of queues that are there in Redis.
+
+
+        class MyLister
+          def self.list(queue_names)
+            # Default implementation
+            return queue_names[0] == "*" ? Resque.queues.sort : queue_names
+          end
+        end
+        
+        worker.queue_lister = MyLister
+
+* Custom queue filter that lets you filter out queues that you don't want to
+  check right now. It can also be used to shuffle the queues in the list if you
+  don't want the FIFO prioritization.
+  
+        class ShuffleFilter
+          def self.filter(queue_names)
+            return queue_names.shuffle
+          end
+        end
+        
+        worker.queue_filter = ShuffleFilter
+
+  
 The Blog Post
 -------------
 
