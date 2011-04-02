@@ -31,6 +31,25 @@ not doing, what queues you're using, what's in those queues, provides
 general usage stats, and helps you track failures.
 
 
+In This Fork
+------------
+
+* Custom interval strategy. If specified, every time the worker is going to sleep,
+  it askes the interval strategy delegate to tell how long it needs to sleep. It gives
+  the list of all #assigned_queues and the #default_interval that was given during
+  the worker initialization as the guidance.
+
+        class DynamicIntervalStrategy
+          def self.sleep_interval(queues, default_interval)
+            # Figure what's the best period to wait before
+            # polling queues next time.          
+            return some_interval
+          end
+        end
+        
+        worker.interval_strategry = DynamicIntervalStrategy
+        w.work(5) # Default setting
+
 The Blog Post
 -------------
 

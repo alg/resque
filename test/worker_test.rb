@@ -329,4 +329,31 @@ context "Resque::Worker" do
   test "returns PID of running process" do
     assert_equal @worker.to_s.split(":")[1].to_i, @worker.pid
   end
+
+  context 'sleep interval' do
+    setup do
+      @worker = Resque::Worker.new(:jobs)
+    end
+
+    test 'when interval_strategy is undefined' do
+      assert_equal 6, @worker.sleep_interval(6)
+    end
+
+    test 'when interval_strategy is defined' do
+      @worker.interval_strategy = class CustomStrategy
+        @queues = @default_interval = nil
+        def self.queues; @queues; end
+        def self.default_interval; @default_interval; end
+        def self.sleep_interval(q, d)
+          @queues = q
+          @default_interval = d
+          return 7
+        end
+      end
+      
+      assert_equal 7, @worker.sleep_interval(6)
+      assert_equal 6, CustomStrategy.default_interval
+      assert_equal [ 'jobs' ], CustomStrategy.queues
+    end 
+  end
 end
