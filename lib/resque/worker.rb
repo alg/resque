@@ -20,6 +20,9 @@ module Resque
     # Automatically set if a fork(2) fails.
     attr_accessor :cant_fork
 
+    # Strategy for choosing intervals
+    attr_accessor :interval_strategy
+
     attr_writer :to_s
 
     # Returns an array of all worker objects.
@@ -109,7 +112,7 @@ module Resque
     # Also accepts a block which will be passed the job as soon as it
     # has completed processing. Useful for testing.
     def work(interval = 5.0, &block)
-      interval = Float(interval)
+      default_interval = Float(interval)
       $0 = "resque: Starting"
       startup
 
@@ -134,10 +137,10 @@ module Resque
           done_working
           @child = nil
         else
-          break if interval.zero?
+          break if default_interval.zero?
           log! "Sleeping for #{interval} seconds"
           procline paused? ? "Paused" : "Waiting for #{@queues.join(',')}"
-          sleep interval
+          sleep sleep_interval(default_interval)
         end
       end
 
@@ -145,6 +148,11 @@ module Resque
       unregister_worker
     end
 
+    # Returns the sleep interval
+    def sleep_interval(default_interval)
+      interval_strategy ? interval_strategy.sleep_interval(assigned_queues, default_interval) : default_interval
+    end
+    
     # DEPRECATED. Processes a single job. If none is given, it will
     # try to produce one. Usually run in the child.
     def process(job = nil, &block)
@@ -197,10 +205,15 @@ module Resque
     # Returns a list of queues to use when searching for a job.
     # A splat ("*") means you want every queue (in alpha order) - this
     # can be useful for dynamically adding new queues.
-    def queues
+    def assigned_queues
       @queues[0] == "*" ? Resque.queues.sort : @queues
     end
 
+    # Post-filtering list of queues assigned to this worker.
+    def queues
+      assigned_queues
+    end
+    
     # Not every platform supports fork. Here we do our magic to
     # determine if yours does.
     def fork
