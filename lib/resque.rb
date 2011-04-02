@@ -254,11 +254,20 @@ module Resque
 
   # Given a class, try to extrapolate an appropriate queue based on a
   # class instance variable or `queue` method.
-  def queue_from_class(klass)
-    klass.instance_variable_get(:@queue) ||
-      (klass.respond_to?(:queue) and klass.queue)
+  def queue_from_class(klass, *args)
+    klass.instance_variable_get(:@queue) || queue_from_class_method(klass, *args)
   end
 
+  def queue_from_class_method(klass, *args)
+    return unless klass.respond_to?(:queue)
+    
+    if klass.method(:queue).arity != 0
+      klass.send(:queue, *args)
+    else
+      klass.queue
+    end
+  end
+  
   # This method will return a `Resque::Job` object or a non-true value
   # depending on whether a job can be obtained. You should pass it the
   # precise name of a queue: case matters.
