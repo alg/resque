@@ -34,6 +34,20 @@ general usage stats, and helps you track failures.
 In This Fork
 ------------
 
+* Dynamic queue names. If you want your job class to tell Resque which queue to use
+  for a particular job, you can do so by defining a method #queue(arguments) in your
+  job class. Previously (and these options still there), you could define the queue
+  name statically with a class variable @queue or the parameter-less method #queue.
+  
+        class Job
+          def self.perform(arg1, arg2)
+          end
+          
+          def self.queue(arg1, arg2)
+            return 'queue_name'
+          end
+        end
+        
 * Custom interval strategy. If specified, every time the worker is going to sleep,
   it askes the interval strategy delegate to tell how long it needs to sleep. It gives
   the list of all #assigned_queues and the #default_interval that was given during
